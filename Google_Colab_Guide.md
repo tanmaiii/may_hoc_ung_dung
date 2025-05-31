@@ -16,7 +16,6 @@ Hướng dẫn chi tiết để chạy project **Telco Customer Churn Prediction
 1. Truy cập [Google Colab](https://colab.research.google.com/)
 2. Đăng nhập tài khoản Google
 3. Tạo notebook mới: **File > New notebook**
-4. Đổi tên: **Telco_Customer_Churn_ML_Project**
 
 ### 1.2 Upload dữ liệu
 ```python
@@ -60,70 +59,70 @@ plt.style.use('default')
 sns.set_palette("husl")
 ```
 
-### 2.2 Load và Explore Data
+### 2.2 Load và Explore Data (Load dữ liệu)
 ```python
 # Load data
 df = pd.read_csv('telco-customer-churn.csv')  # Hoặc đường dẫn file bạn upload
 
-print("🎯 DATASET OVERVIEW")
-print(f"Shape: {df.shape}")
-print(f"Missing values: {df.isnull().sum().sum()}")
-print("\n📊 First 5 rows:")
+print("🎯 TỔNG QUAN DỮ LIỆU")
+print(f"Kích thước: {df.shape}")
+print(f"Giá trị thiếu: {df.isnull().sum().sum()}")
+print("\n📊 5 dòng đầu tiên:")
 df.head()
 ```
 
-### 2.3 Data Analysis và Visualization
+### 2.3 Data Analysis và Visualization (Phân tích dữ liệu và trực quan hóa)
 ```python
 # Basic info
-print("📈 DATA INFO")
+print("📈 THÔNG TIN DỮ LIỆU")
 df.info()
 
-print("\n📊 STATISTICAL SUMMARY")
+print("\n📊 THỐNG KÊ MÔ TẢ")
 df.describe()
 
 # Churn distribution
-print("\n🎯 CHURN DISTRIBUTION")
+print("\n🎯 PHÂN BỐ CHURN")
 churn_counts = df['Churn'].value_counts()
 print(churn_counts)
-print(f"Churn rate: {churn_counts['Yes'] / len(df) * 100:.2f}%")
+print(f"Tỷ lệ khách hàng rời bỏ dịch vụ (Churn rate): {churn_counts[1] / len(df) * 100:.2f}%")
 
 # Visualization
 fig, axes = plt.subplots(2, 2, figsize=(15, 10))
 
-# Churn distribution
+# Biểu đồ pie char
 axes[0,0].pie(churn_counts.values, labels=churn_counts.index, autopct='%1.1f%%')
-axes[0,0].set_title('Churn Distribution')
+axes[0,0].set_title('Tỷ lệ khách hàng rời bỏ (Churn)')
 
-# Tenure distribution
+# Biểu đồ Histogram
 axes[0,1].hist(df['tenure'], bins=30, alpha=0.7)
-axes[0,1].set_title('Tenure Distribution')
-axes[0,1].set_xlabel('Tenure (months)')
+axes[0,1].set_title('Phân bố thời gian sử dụng')
+axes[0,1].set_xlabel('Số tháng sử dụng (tenure)')
 
-# Monthly charges by churn
+# Biểu đồ Boxplot
 sns.boxplot(data=df, x='Churn', y='MonthlyCharges', ax=axes[1,0])
-axes[1,0].set_title('Monthly Charges by Churn')
+axes[1,0].set_title('Chi phí hàng tháng theo Churn')
 
-# Contract type by churn
+# Biểu đồ Bar chart
 contract_churn = pd.crosstab(df['Contract'], df['Churn'])
 contract_churn.plot(kind='bar', ax=axes[1,1])
-axes[1,1].set_title('Contract Type vs Churn')
+axes[1,1].set_title('Loại hợp đồng và Churn')
 axes[1,1].legend(title='Churn')
 
 plt.tight_layout()
 plt.show()
 ```
 
-## 🔄 Bước 3: Data Preprocessing
+## 🔄 Bước 3: Data Preprocessing (Tiền xử lý dữ liệu)
 
-### 3.1 Data Cleaning
+### 3.1 Data Cleaning (Làm sạch)
 ```python
 # Tạo copy để xử lý
 df_clean = df.copy()
 
-print("🧹 DATA CLEANING...")
+print("🧹 LÀM SẠCH DỮ LIỆU...")
 
 # Xử lý TotalCharges (có giá trị ' ')
-print(f"TotalCharges ' ' values: {(df_clean['TotalCharges'] == ' ').sum()}")
+print(f"Giá trị ' ' trong TotalCharges: {(df_clean['TotalCharges'] == ' ').sum()}")
 df_clean['TotalCharges'] = df_clean['TotalCharges'].replace(' ', np.nan)
 df_clean['TotalCharges'] = pd.to_numeric(df_clean['TotalCharges'], errors='coerce')
 
@@ -133,13 +132,13 @@ df_clean['TotalCharges'].fillna(0, inplace=True)
 # Remove customerID
 df_clean = df_clean.drop('customerID', axis=1)
 
-print(f"✅ Cleaned shape: {df_clean.shape}")
-print(f"Missing values after cleaning: {df_clean.isnull().sum().sum()}")
+print(f"✅ Kích thước sau làm sạch: {df_clean.shape}")
+print(f"Giá trị thiếu sau làm sạch: {df_clean.isnull().sum().sum()}")
 ```
 
-### 3.2 Feature Engineering
+### 3.2 Feature Engineering 
 ```python
-print("🔧 FEATURE ENGINEERING...")
+print("🔧 TẠO ĐẶC TRƯNG MỚI...")
 
 # Binary encoding cho Yes/No columns
 binary_cols = []
@@ -150,7 +149,7 @@ for col in df_clean.columns:
             binary_cols.append(col)
             df_clean[col] = df_clean[col].map({'Yes': 1, 'No': 0})
 
-print(f"Binary encoded columns: {binary_cols}")
+print(f"Các cột đã mã hóa nhị phân: {binary_cols}")
 
 # One-hot encoding cho nominal variables
 nominal_cols = ['gender', 'Contract', 'PaymentMethod', 'InternetService']
@@ -166,15 +165,25 @@ df_encoded['AvgChargePerTenure'] = np.where(
     df_encoded['MonthlyCharges']
 )
 
-# Tenure groups
-df_encoded['TenureGroup'] = pd.cut(
-    df_encoded['tenure'],
-    bins=[0, 12, 36, 60, float('inf')],
-    labels=[0, 1, 2, 3]
-)
-df_encoded['TenureGroup'] = df_encoded['TenureGroup'].astype(int)
+# Tenure groups - tạo nhóm theo thời gian sử dụng
+try:
+    df_encoded['TenureGroup'] = pd.cut(
+        df_encoded['tenure'],
+        bins=[0, 12, 36, 60, float('inf')],
+        labels=['0-12m', '13-36m', '37-60m', '60m+']
+    )
+    # Encode categorical labels thành số
+    df_encoded['TenureGroup'] = df_encoded['TenureGroup'].cat.codes
+except Exception as e:
+    print(f"Lỗi khi tạo TenureGroup: {e}")
+    # Fallback: tạo nhóm đơn giản
+    df_encoded['TenureGroup'] = pd.cut(
+        df_encoded['tenure'],
+        bins=4,
+        labels=[0, 1, 2, 3]
+    ).astype(int)
 
-print(f"✅ Final encoded shape: {df_encoded.shape}")
+print(f"✅ Kích thước cuối cùng: {df_encoded.shape}")
 df_encoded.head()
 ```
 
@@ -186,12 +195,12 @@ df_encoded.head()
 plt.figure(figsize=(20, 16))
 correlation_matrix = df_encoded.corr()
 sns.heatmap(correlation_matrix, annot=False, cmap='coolwarm', center=0)
-plt.title('Feature Correlation Matrix')
+plt.title('Ma trận tương quan đặc trưng')
 plt.show()
 
 # Top correlations with target
 target_corr = correlation_matrix['Churn'].abs().sort_values(ascending=False)
-print("🎯 TOP 15 FEATURES CORRELATED WITH CHURN:")
+print("🎯 TOP 15 ĐẶC TRƯNG TƯƠNG QUAN VỚI CHURN:")
 print(target_corr.head(15))
 ```
 
@@ -201,8 +210,8 @@ print(target_corr.head(15))
 X = df_encoded.drop('Churn', axis=1)
 y = df_encoded['Churn']
 
-print(f"Features shape: {X.shape}")
-print(f"Target distribution: {y.value_counts().to_dict()}")
+print(f"Kích thước đặc trưng: {X.shape}")
+print(f"Phân bố target: {y.value_counts().to_dict()}")
 
 # Method 1: SelectKBest
 def select_features_univariate(X, y, k=10):
@@ -233,11 +242,11 @@ def select_features_rf(X, y, k=10):
 
 # Apply feature selection
 for k in [5, 10, 15]:
-    print(f"\n🔍 TOP {k} FEATURES:")
+    print(f"\n🔍 TOP {k} ĐẶC TRƯNG:")
     
     # Univariate selection
     features_uni, scores_uni = select_features_univariate(X, y, k)
-    print(f"Univariate: {features_uni}")
+    print(f"Phương pháp Univariate: {features_uni}")
     
     # Random Forest
     features_rf, scores_rf = select_features_rf(X, y, k)
@@ -258,9 +267,9 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-print(f"Train set: {X_train_scaled.shape}")
-print(f"Test set: {X_test_scaled.shape}")
-print(f"Train target distribution: {y_train.value_counts(normalize=True).round(3).to_dict()}")
+print(f"Tập huấn luyện: {X_train_scaled.shape}")
+print(f"Tập kiểm tra: {X_test_scaled.shape}")
+print(f"Phân bố target trong tập train: {y_train.value_counts(normalize=True).round(3).to_dict()}")
 ```
 
 ### 5.2 Model Training
@@ -276,7 +285,7 @@ models = {
 results = {}
 
 for name, model in models.items():
-    print(f"\n🔄 Training {name}...")
+    print(f"\n🔄 Đang huấn luyện {name}...")
     
     # Train model
     model.fit(X_train_scaled, y_train)
@@ -301,8 +310,8 @@ for name, model in models.items():
         'y_pred_proba': y_pred_proba
     }
     
-    print(f"   Accuracy: {accuracy:.4f}")
-    print(f"   AUC: {auc:.4f}" if auc else "   AUC: N/A")
+    print(f"   Độ chính xác: {accuracy:.4f}")
+    print(f"   AUC: {auc:.4f}" if auc else "   AUC: Không có")
     print(f"   CV Accuracy: {cv_scores.mean():.4f} (±{cv_scores.std():.4f})")
 ```
 
@@ -318,7 +327,7 @@ results_df = pd.DataFrame({
     } for name in results.keys()
 }).T
 
-print("📊 MODEL COMPARISON:")
+print("📊 SO SÁNH MÔ HÌNH:")
 print(results_df.round(4))
 
 # Plot comparison
@@ -326,13 +335,13 @@ fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
 # Accuracy comparison
 results_df['Test Accuracy'].plot(kind='bar', ax=axes[0], color='skyblue')
-axes[0].set_title('Test Accuracy Comparison')
-axes[0].set_ylabel('Accuracy')
+axes[0].set_title('So sánh độ chính xác kiểm tra')
+axes[0].set_ylabel('Độ chính xác')
 axes[0].tick_params(axis='x', rotation=45)
 
 # AUC comparison
 results_df['AUC Score'].plot(kind='bar', ax=axes[1], color='lightgreen')
-axes[1].set_title('AUC Score Comparison')
+axes[1].set_title('So sánh điểm AUC')
 axes[1].set_ylabel('AUC')
 axes[1].tick_params(axis='x', rotation=45)
 
@@ -340,7 +349,7 @@ axes[1].tick_params(axis='x', rotation=45)
 cv_means = results_df['CV Mean']
 cv_stds = results_df['CV Std']
 axes[2].bar(range(len(cv_means)), cv_means, yerr=cv_stds, capsize=5, color='orange', alpha=0.7)
-axes[2].set_title('Cross Validation Scores')
+axes[2].set_title('Điểm Cross Validation')
 axes[2].set_ylabel('CV Accuracy')
 axes[2].set_xticks(range(len(cv_means)))
 axes[2].set_xticklabels(cv_means.index, rotation=45)
@@ -353,9 +362,9 @@ fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 for i, (name, result) in enumerate(results.items()):
     cm = confusion_matrix(y_test, result['y_pred'])
     sns.heatmap(cm, annot=True, fmt='d', ax=axes[i], cmap='Blues')
-    axes[i].set_title(f'{name}\nAccuracy: {result["accuracy"]:.3f}')
-    axes[i].set_xlabel('Predicted')
-    axes[i].set_ylabel('Actual')
+    axes[i].set_title(f'{name}\nĐộ chính xác: {result["accuracy"]:.3f}')
+    axes[i].set_xlabel('Dự đoán')
+    axes[i].set_ylabel('Thực tế')
 
 plt.tight_layout()
 plt.show()
@@ -379,7 +388,7 @@ feature_sets = {
 subset_results = {}
 
 for subset_name, features in feature_sets.items():
-    print(f"\n🔍 Testing {subset_name} ({len(features)} features)...")
+    print(f"\n🔍 Đang kiểm tra {subset_name} ({len(features)} đặc trưng)...")
     
     # Subset data
     X_subset = X[features]
@@ -405,7 +414,7 @@ for subset_name, features in feature_sets.items():
         'features': features
     }
     
-    print(f"   Accuracy: {accuracy_sub:.4f} with {len(features)} features")
+    print(f"   Độ chính xác: {accuracy_sub:.4f} với {len(features)} đặc trưng")
 
 # Plot feature selection results
 subset_df = pd.DataFrame(subset_results).T
@@ -413,22 +422,22 @@ subset_df = subset_df.sort_values('accuracy', ascending=False)
 
 plt.figure(figsize=(12, 6))
 bars = plt.bar(range(len(subset_df)), subset_df['accuracy'], color='lightcoral')
-plt.xlabel('Feature Selection Method')
-plt.ylabel('Accuracy')
-plt.title('Performance by Feature Selection Method')
+plt.xlabel('Phương pháp lựa chọn đặc trưng')
+plt.ylabel('Độ chính xác')
+plt.title('Hiệu suất theo phương pháp lựa chọn đặc trưng')
 plt.xticks(range(len(subset_df)), subset_df.index, rotation=45)
 
 # Add value labels on bars
 for i, bar in enumerate(bars):
     height = bar.get_height()
     plt.text(bar.get_x() + bar.get_width()/2., height + 0.005,
-             f'{height:.3f}\n({subset_df.iloc[i]["n_features"]} features)',
+             f'{height:.3f}\n({subset_df.iloc[i]["n_features"]} đặc trưng)',
              ha='center', va='bottom')
 
 plt.tight_layout()
 plt.show()
 
-print("\n🏆 BEST FEATURE SELECTION RESULTS:")
+print("\n🏆 KẾT QUẢ CHỌN ĐẶC TRƯNG TỐT NHẤT:")
 print(subset_df.sort_values('accuracy', ascending=False))
 ```
 
@@ -445,21 +454,21 @@ from google.colab import files
 files.download('model_comparison_results.csv')
 files.download('feature_selection_results.csv')
 
-print("✅ Results saved and downloaded!")
+print("✅ Kết quả đã được lưu và tải xuống!")
 ```
 
 ## 🎉 Hoàn thành!
 
 ### 📊 Summary
 ```python
-print("🎯 PROJECT SUMMARY")
+print("🎯 TÓM TẮT DỰ ÁN")
 print("=" * 50)
-print(f"📊 Dataset: {df.shape[0]} customers, {df.shape[1]} features")
-print(f"🎯 Target: Customer Churn ({(y.sum() / len(y) * 100):.1f}% churn rate)")
-print(f"🔧 Features after preprocessing: {X.shape[1]}")
-print(f"🏆 Best model: {results_df['Test Accuracy'].idxmax()} ({results_df['Test Accuracy'].max():.3f})")
-print(f"🎯 Best feature set: {subset_df.index[0]} ({subset_df.iloc[0]['accuracy']:.3f})")
-print("\n✅ Analysis completed successfully!")
+print(f"📊 Dữ liệu: {df.shape[0]} khách hàng, {df.shape[1]} đặc trưng")
+print(f"🎯 Mục tiêu: Customer Churn ({(y.sum() / len(y) * 100):.1f}% tỷ lệ churn)")
+print(f"🔧 Đặc trưng sau tiền xử lý: {X.shape[1]}")
+print(f"🏆 Mô hình tốt nhất: {results_df['Test Accuracy'].idxmax()} ({results_df['Test Accuracy'].max():.3f})")
+print(f"🎯 Bộ đặc trưng tốt nhất: {subset_df.index[0]} ({subset_df.iloc[0]['accuracy']:.3f})")
+print("\n✅ Phân tích hoàn thành thành công!")
 ```
 
 ## 🚀 Tips cho Google Colab

@@ -16,6 +16,32 @@ Dataset này được thiết kế để:
 
 Bộ dữ liệu gồm **21 cột** với các thông tin sau:
 
+| Tên cột | Mô tả |
+|---------|-------|
+| `customerID` | Mã định danh khách hàng |
+| `gender` | Giới tính (Male/Female) |
+| `SeniorCitizen` | Người cao tuổi (0/1) |
+| `Partner` | Có người bạn đời (Yes/No) |
+| `Dependents` | Có người phụ thuộc (Yes/No) |
+| `tenure` | Thời gian sử dụng dịch vụ (tháng) |
+| `PhoneService` | Dịch vụ điện thoại |
+| `MultipleLines` | Nhiều đường dây |
+| `InternetService` | Dịch vụ Internet (DSL/Fiber optic/No) |
+| `OnlineSecurity` | Bảo mật trực tuyến |
+| `OnlineBackup` | Sao lưu trực tuyến |
+| `DeviceProtection` | Bảo vệ thiết bị |
+| `TechSupport` | Hỗ trợ kỹ thuật |
+| `StreamingTV` | Dịch vụ TV streaming |
+| `StreamingMovies` | Dịch vụ phim streaming |
+| `Contract` | Loại hợp đồng |
+| `PaperlessBilling` | Hóa đơn không giấy |
+| `PaymentMethod` | Phương thức thanh toán |
+| `MonthlyCharges` | Phí hàng tháng ($) |
+| `TotalCharges` | Tổng phí đã thanh toán ($) |
+| `Churn` | Khách hàng có rời bỏ dịch vụ hay không |
+
+
+## Chi tiết
 ### 👤 Thông tin cá nhân khách hàng
 | Cột | Mô tả | Kiểu dữ liệu |
 |-----|-------|--------------|

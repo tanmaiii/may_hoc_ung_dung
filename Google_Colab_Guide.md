@@ -292,9 +292,7 @@ for k in [5, 10, 15]:
 ### 5.1 Data Splitting và Scaling
 ```python
 # Chia dữ liệu
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Chuẩn hóa
 scaler = StandardScaler()
@@ -314,18 +312,43 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.model_selection import cross_val_score
 
 class MutilModel:
     def __init__(self):
         self.models = {
-            'LogisticRegression': LogisticRegression(max_iter=1000, random_state=42),
-            'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42),
-            'SVM': SVC(probability=True, random_state=42),
-            'KNN': KNeighborsClassifier(n_neighbors=5),
-            'NeuralNetwork': MLPClassifier(hidden_layer_sizes=(100, 50), max_iter=500, random_state=42)
+            'LogisticRegression': LogisticRegression(
+                solver='liblinear',   # tốt cho dữ liệu nhỏ, phân loại nhị phân
+                C=1.0,                # độ phạt (regularization) - nhỏ hơn → chống overfit
+                random_state=42
+            ),
+            'RandomForest': RandomForestClassifier(
+                n_estimators=200,     # nhiều cây hơn để tăng độ ổn định
+                max_depth=10,         # giới hạn độ sâu cây để tránh overfitting
+                min_samples_split=5,  # tăng yêu cầu để chia nhánh
+                random_state=42
+            ),
+            'SVM': SVC(
+                kernel='rbf',          # kernel phổ biến nhất
+                C=1.0,                 # penalty, điều chỉnh biên độ margin
+                gamma='scale',         # tự động điều chỉnh theo số chiều
+                probability=True,
+                random_state=42
+            ),
+            'KNN': KNeighborsClassifier(
+                n_neighbors=7,         # chọn số lân cận là số lẻ và thử nghiệm được
+                weights='distance',    # lân cận gần hơn có trọng số lớn hơn
+                metric='minkowski'     # metric mặc định cho khoảng cách Euclidean
+            ),
+            'NeuralNetwork': MLPClassifier(
+                hidden_layer_sizes=(64, 32),  # đơn giản hơn, tránh overfit
+                activation='relu',            # phổ biến và hiệu quả
+                solver='adam',                # thường ổn định và nhanh
+                learning_rate='adaptive',     # giảm learning rate khi gặp khó
+                max_iter=1000,
+                random_state=42
+            )
         }
 
     def train(self, X_train, y_train):
@@ -337,15 +360,9 @@ class MutilModel:
 
         for name, model in self.models.items():
             y_pred = model.predict(X_test)
+            y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else None
+            auc = roc_auc_score(y_test, y_proba) if y_proba is not None else None
 
-            # Tính AUC nếu có hỗ trợ predict_proba
-            if hasattr(model, "predict_proba"):
-                y_proba = model.predict_proba(X_test)[:, 1]
-                auc = roc_auc_score(y_test, y_proba)
-            else:
-                auc = None
-
-            # Cross-validation
             if X_train is not None and y_train is not None:
                 cv_scores = cross_val_score(model, X_train, y_train, cv=cv, scoring='accuracy')
                 cv_mean = cv_scores.mean()
@@ -355,17 +372,62 @@ class MutilModel:
                 cv_std = None
 
             report[name] = {
-                'accuracy': accuracy_score(y_test, y_pred),
-                'precision': precision_score(y_test, y_pred),
-                'recall': recall_score(y_test, y_pred),
-                'f1_score': f1_score(y_test, y_pred),
-                'auc': auc,
-                'cv_mean': cv_mean,
+                'accuracy': accuracy_score(y_test, y_pred), # Độ chính xác
+                'precision': precision_score(y_test, y_pred), # Độ chính xác theo dự đoán
+                'recall': recall_score(y_test, y_pred), # Khả năng phát hiện đúng
+                'f1_score': f1_score(y_test, y_pred), # Chỉ số cân bằng giữa Precision và Recall
+                'auc': auc, # khả năng mô hình phân biệt
+                'cv_mean': cv_mean, 
                 'cv_std': cv_std
             }
 
         return report
 
+    def predict_customer(self, model_name, customer_data, reference_columns, scaler):
+        model = self.models.get(model_name)
+        if not model:
+            raise ValueError(f"Model '{model_name}' not found.")
+
+        # Chuẩn bị dữ liệu đầu vào
+        df_input = prepare_input(customer_data, reference_columns)
+        df_scaled = scaler.transform(df_input)
+
+        prediction = model.predict(df_scaled)[0]
+        probability = model.predict_proba(df_scaled)[0][1] if hasattr(model, "predict_proba") else None
+
+        return {
+            "prediction": prediction,
+            "probability": probability
+        }
+
+    def predict_all_customers(self, customer_data, reference_columns, scaler):
+        """
+        Dự đoán cho cùng 1 bộ dữ liệu đầu vào (customer_data) với tất cả các model đã lưu.
+        In ra kết quả prediction và probability (nếu có) của từng model.
+        """
+        # Chuẩn bị DataFrame đầu vào chung
+        df_input = prepare_input(customer_data, reference_columns)
+        df_scaled = scaler.transform(df_input)
+
+        print("------------------------------🚀🚀🚀-----------------------------")
+
+        # Lặp qua tất cả mô hình
+        for name, model in self.models.items():
+            pred = model.predict(df_scaled)[0]
+            proba = model.predict_proba(df_scaled)[0][1] if hasattr(model, "predict_proba") else None
+
+            # In kết quả
+            print(f"\n🔍 Kết quả của mô hình {name}:")
+            print(f"-> {'🛡️ Ở lại' if pred == 0 else '🚶‍➡️ Rời đi'}")
+            if proba is not None:
+                print(f"  - Xác suất churn: {proba:.4f}")
+            else:
+                print("  - Xác suất churn: Không có (model không hỗ trợ predict_proba)")
+```
+
+#### Chạy model
+
+```python
 # Khởi tạo và sử dụng MutilModel
 print("🤖 KHỞI TẠO VÀ HUẤN LUYỆN CÁC MÔ HÌNH:")
 multi_model = MutilModel()
@@ -386,7 +448,7 @@ results = multi_model.evaluation(X_test_scaled, y_test, X_train_scaled, y_train)
 # In kết quả chi tiết
 for name, metrics in results.items():
     print(f"\n🔹 {name}:")
-    print(f"   Accuracy:  {metrics['accuracy']:.4f}")
+    print(f"   Accuracy:  {metrics['accuracy']:.4f}") 
     print(f"   Precision: {metrics['precision']:.4f}")
     print(f"   Recall:    {metrics['recall']:.4f}")
     print(f"   F1-Score:  {metrics['f1_score']:.4f}")
@@ -395,6 +457,129 @@ for name, metrics in results.items():
     if metrics['cv_mean'] is not None:
         print(f"   CV Score:  {metrics['cv_mean']:.4f} (±{metrics['cv_std']:.4f})")
 ```
+
+```python
+# Hàm hỗ trợ: đảm bảo customer_data có đủ cột và đúng thứ tự
+def prepare_input(customer_data, reference_columns):
+    df_input = pd.DataFrame([customer_data])
+
+    # Thêm cột thiếu với giá trị 0
+    for col in reference_columns:
+        if col not in df_input.columns:
+            df_input[col] = 0
+
+    # Sắp xếp theo đúng thứ tự columns
+    df_input = df_input[reference_columns]
+
+    return df_input
+```
+
+```python
+# Trung thành, khả năng ở lại cao
+customer_1 = {
+   'gender_Female': 0,
+    'SeniorCitizen': 0,
+    'Partner_Yes': 1,
+    'tenure': 50,
+    'MonthlyCharges': 65.0,
+    'InternetService_DSL': 1,
+    'Contract_Two year': 1,
+    'PaymentMethod_Bank transfer (automatic)': 1
+}
+
+# Lớn tuổi, sống một mình, dịch vụ đắt 
+customer_2 = {
+    'gender_Female': 0,
+    'SeniorCitizen': 1,
+    'Partner_Yes': 0,
+    'tenure': 2,
+    'MonthlyCharges': 95.5,
+    'InternetService_Fiber optic': 1,
+    'Contract_Month-to-month': 1,
+    'PaymentMethod_Mailed check': 1
+}
+
+# Mới, chi phí cao, hợp đồng ngắn hạn
+customer_3 = {
+    'gender_Female': 1,
+    'SeniorCitizen': 1,
+    'Partner_Yes': 0,
+    'tenure': 1,
+    'MonthlyCharges': 99.0,
+    'InternetService_Fiber optic': 1,
+    'Contract_Month-to-month': 1,
+    'PaymentMethod_Electronic check': 1
+}
+
+
+multi_model.predict_all_customers(customer_1, X_train.columns, scaler)
+multi_model.predict_all_customers(customer_2, X_train.columns, scaler)
+multi_model.predict_all_customers(customer_3, X_train.columns, scaler)
+```
+## Kết quả
+### ------------------------------🚀🚀🚀-----------------------------
+
+🔍 Kết quả của mô hình LogisticRegression:
+- -> 🛡️ Ở lại
+- Xác suất churn: 0.0074
+
+🔍 Kết quả của mô hình RandomForest:
+- -> 🛡️ Ở lại
+- Xác suất churn: 0.2260
+
+🔍 Kết quả của mô hình SVM:
+- -> 🛡️ Ở lại
+- Xác suất churn: 0.1222
+
+🔍 Kết quả của mô hình KNN:
+- -> 🛡️ Ở lại
+- Xác suất churn: 0.2569
+
+🔍 Kết quả của mô hình NeuralNetwork:
+- -> 🛡️ Ở lại
+- Xác suất churn: 0.0000
+### ------------------------------🚀🚀🚀-----------------------------
+
+🔍 Kết quả của mô hình LogisticRegression:
+- -> 🚶‍➡️ Rời đi
+- Xc suất churn: 0.5162
+
+🔍 Kết quả của mô hình RandomForest:
+- -> 🚶‍➡️ Rời đi
+- Xác suất churn: 0.6392
+
+🔍 Kết quả của mô hình SVM:
+- -> 🚶‍➡️ Rời đi
+- Xác suất churn: 0.6521
+
+🔍 Kết quả của mô hình KNN:
+- -> 🚶‍➡️ Rời đi
+- Xác suất churn: 0.8648
+
+🔍 Kết quả của mô hình NeuralNetwork:
+- -> 🛡️ Ở lại
+- Xác suất churn: 0.0122
+### ------------------------------🚀🚀🚀-----------------------------
+
+🔍 Kết quả của mô hình LogisticRegression:
+- -> 🚶‍➡️ Rời đi
+- Xác suất churn: 0.6011
+
+🔍 Kết quả của mô hình RandomForest:
+- -> 🚶‍➡️ Rời đi
+- Xác suất churn: 0.7022
+
+🔍 Kết quả của mô hình SVM:
+- -> 🚶‍➡️ Rời đi
+- Xác suất churn: 0.7868
+
+🔍 Kết quả của mô hình KNN:
+- -> 🚶‍➡️ Rời đi
+- Xác suất churn: 1.0000
+
+🔍 Kết quả của mô hình NeuralNetwork:
+- -> 🛡️ Ở lại
+- Xác suất churn: 0.0108
 
 ### 5.2.1 Linear Regression Analysis (Lecture 3)
 ```python

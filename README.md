@@ -40,6 +40,52 @@ Bộ dữ liệu gồm **21 cột** với các thông tin sau:
 | `TotalCharges` | Tổng phí đã thanh toán ($) |
 | `Churn` | Khách hàng có rời bỏ dịch vụ hay không |
 
+## Bộ dữ liệu sau tiền xử lý dữ liệu gồm **26 features** với các thông tin sau:
+
+### 📊 **Features Gốc (Được giữ lại)**
+
+| Tên cột | Mô tả | Kiểu dữ liệu |
+|---------|-------|--------------|
+| `SeniorCitizen` | Người cao tuổi (0/1) | Binary |
+| `Partner` | Có người bạn đời (Yes/No) | Categorical |
+| `Dependents` | Có người phụ thuộc (Yes/No) | Categorical |
+| `tenure` | Thời gian sử dụng dịch vụ (tháng) | Numerical |
+| `PhoneService` | Dịch vụ điện thoại | Categorical |
+| `MultipleLines` | Nhiều đường dây | Categorical |
+| `OnlineSecurity` | Bảo mật trực tuyến | Categorical |
+| `OnlineBackup` | Sao lưu trực tuyến | Categorical |
+| `DeviceProtection` | Bảo vệ thiết bị | Categorical |
+| `TechSupport` | Hỗ trợ kỹ thuật | Categorical |
+| `StreamingTV` | Dịch vụ TV streaming | Categorical |
+| `StreamingMovies` | Dịch vụ phim streaming | Categorical |
+| `PaperlessBilling` | Hóa đơn không giấy | Categorical |
+| `MonthlyCharges` | Phí hàng tháng ($) | Numerical |
+| `TotalCharges` | Tổng phí đã thanh toán ($) | Numerical |
+| `Churn` | Khách hàng có rời bỏ dịch vụ hay không (Target) | Binary |
+
+### 🔄 **Features sau One-Hot Encoding**
+
+| Tên cột | Mô tả | Gốc từ |
+|---------|-------|--------|
+| `gender_Male` | Giới tính nam (1=Male, 0=Female) | `gender` |
+| `Contract_One year` | Hợp đồng 1 năm | `Contract` |
+| `Contract_Two year` | Hợp đồng 2 năm | `Contract` |
+| `PaymentMethod_Credit card (automatic)` | Thanh toán thẻ tín dụng tự động | `PaymentMethod` |
+| `PaymentMethod_Electronic check` | Thanh toán séc điện tử | `PaymentMethod` |
+| `PaymentMethod_Mailed check` | Thanh toán séc qua đường bưu điện | `PaymentMethod` |
+| `InternetService_Fiber optic` | Dịch vụ Internet cáp quang | `InternetService` |
+| `InternetService_No` | Không sử dụng Internet | `InternetService` |
+
+### ⚙️ **Features mới (Feature Engineering)**
+
+| Tên cột | Mô tả | Công thức |
+|---------|-------|-----------|
+| `AvgChargePerTenure` | Phí trung bình mỗi tháng theo thời gian sử dụng | `TotalCharges / tenure` |
+| `TenureGroup` | Nhóm thời gian sử dụng dịch vụ | Phân nhóm tenure |
+
+**Lưu ý**: 
+- Features `customerID` đã được loại bỏ vì không có giá trị dự đoán
+- Các features categorical khác đã được encode bằng reference category (Month-to-month cho Contract, Bank transfer cho PaymentMethod, DSL cho InternetService)
 
 ## Chi tiết
 ### 👤 Thông tin cá nhân khách hàng

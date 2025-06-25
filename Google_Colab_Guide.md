@@ -318,37 +318,46 @@ from sklearn.model_selection import cross_val_score
 class MutilModel:
     def __init__(self):
         self.models = {
+            # Hồi quy tuyến tính
             'LogisticRegression': LogisticRegression(
                 solver='liblinear',   # tốt cho dữ liệu nhỏ, phân loại nhị phân
                 C=1.0,                # độ phạt (regularization) - nhỏ hơn → chống overfit
                 random_state=42
             ),
+            # Rừng ngẫu nhiên
             'RandomForest': RandomForestClassifier(
-                n_estimators=200,     # nhiều cây hơn để tăng độ ổn định
+                n_estimators=200,     # số lượng cây quyết định
                 max_depth=10,         # giới hạn độ sâu cây để tránh overfitting
-                min_samples_split=5,  # tăng yêu cầu để chia nhánh
+                min_samples_split=5,  # số mẫu ít nhất của 1 nút
                 random_state=42
             ),
+            # Máy vector hổ trợ (SVC là biến thể của SVM)
             'SVM': SVC(
                 kernel='rbf',          # kernel phổ biến nhất
                 C=1.0,                 # penalty, điều chỉnh biên độ margin
                 gamma='scale',         # tự động điều chỉnh theo số chiều
-                probability=True,
+                probability=True,      # Tính xác xuất dự đoán
                 random_state=42
             ),
+            # Láng giềng gần nhất
             'KNN': KNeighborsClassifier(
-                n_neighbors=7,         # chọn số lân cận là số lẻ và thử nghiệm được
+                n_neighbors=7,         # chọn số lân cận cầdn xét
                 weights='distance',    # lân cận gần hơn có trọng số lớn hơn
-                metric='minkowski'     # metric mặc định cho khoảng cách Euclidean
+                metric='minkowski'     # Khoảng cách Minkowski
             ),
-            'NeuralNetwork': MLPClassifier(
-                hidden_layer_sizes=(64, 32),  # đơn giản hơn, tránh overfit
-                activation='relu',            # phổ biến và hiệu quả
-                solver='adam',                # thường ổn định và nhanh
-                learning_rate='adaptive',     # giảm learning rate khi gặp khó
-                max_iter=1000,
-                random_state=42
-            )
+            # Mạng nơron
+           'NeuralNetwork': MLPClassifier(
+              hidden_layer_sizes=(128, 64, 32),  # tăng số tầng ẩn, giảm dần số neuron
+              activation='relu',                # relu vẫn là tốt nhất với dữ liệu phi tuyến
+              solver='adam',                    # ổn định và nhanh
+              alpha=0.0005,                     # hệ số regularization (L2), chống overfitting
+              learning_rate='adaptive',        # giảm learning rate khi gặp khó
+              learning_rate_init=0.001,        # learning rate khởi tạo
+              early_stopping=True,             # dừng sớm nếu không cải thiện
+              validation_fraction=0.1,         # 10% dữ liệu để validation khi training
+              max_iter=500,                    # số vòng lặp (thường không cần quá lớn nếu early stopping)
+              random_state=42
+          )
         }
 
     def train(self, X_train, y_train):
@@ -377,11 +386,48 @@ class MutilModel:
                 'recall': recall_score(y_test, y_pred), # Khả năng phát hiện đúng
                 'f1_score': f1_score(y_test, y_pred), # Chỉ số cân bằng giữa Precision và Recall
                 'auc': auc, # khả năng mô hình phân biệt
-                'cv_mean': cv_mean, 
+                'cv_mean': cv_mean,
                 'cv_std': cv_std
             }
 
         return report
+
+    def predict_customer(self, model_name, customer_data, reference_columns, scaler):
+        model = self.models.get(model_name)
+        if not model:
+            raise ValueError(f"Model '{model_name}' not found.")
+
+        # Chuẩn bị dữ liệu đầu vào
+        df_input = prepare_input(customer_data, reference_columns)
+        df_scaled = scaler.transform(df_input)
+
+        prediction = model.predict(df_scaled)[0]
+        probability = model.predict_proba(df_scaled)[0][1] if hasattr(model, "predict_proba") else None
+
+        return {
+            "prediction": prediction,
+            "probability": probability
+        }
+
+    def predict_all_customers(self, customer_data, reference_columns, scaler):
+        # Chuẩn bị DataFrame đầu vào chung
+        df_input = prepare_input(customer_data, reference_columns)
+        df_scaled = scaler.transform(df_input)
+
+        print("------------------------------🚀🚀🚀-----------------------------")
+
+        # Lặp qua tất cả mô hình
+        for name, model in self.models.items():
+            pred = model.predict(df_scaled)[0]
+            proba = model.predict_proba(df_scaled)[0][1] if hasattr(model, "predict_proba") else None
+
+            # In kết quả
+            print(f"\n🔍 Kết quả của mô hình {name}:")
+            print(f"-> {'🛡️ Ở lại' if pred == 0 else '🚶‍➡️ Rời đi'}")
+            if proba is not None:
+                print(f"  - Xác suất churn: {proba:.4f}")
+            else:
+                print("  - Xác suất churn: Không có (model không hỗ trợ predict_proba)")
 
     def predict_customer(self, model_name, customer_data, reference_columns, scaler):
         model = self.models.get(model_name)
@@ -456,6 +502,61 @@ for name, metrics in results.items():
         print(f"   AUC:       {metrics['auc']:.4f}")
     if metrics['cv_mean'] is not None:
         print(f"   CV Score:  {metrics['cv_mean']:.4f} (±{metrics['cv_std']:.4f})")
+```
+
+```
+🤖 KHỞI TẠO VÀ HUẤN LUYỆN CÁC MÔ HÌNH:
+📋 Các mô hình được sử dụng:
+   - LogisticRegression
+   - RandomForest
+   - SVM
+   - KNN
+   - NeuralNetwork
+
+🔄 Đang huấn luyện 5 mô hình...
+✅ Hoàn thành huấn luyện!
+
+📊 ĐÁNH GIÁ HIỆU SUẤT:
+
+🔹 LogisticRegression:
+   Accuracy:  0.8197
+   Precision: 0.6820
+   Recall:    0.5979
+   F1-Score:  0.6371
+   AUC:       0.8626
+   CV Score:  0.8005 (±0.0078)
+
+🔹 RandomForest:
+   Accuracy:  0.8148
+   Precision: 0.7074
+   Recall:    0.5121
+   F1-Score:  0.5941
+   AUC:       0.8615
+   CV Score:  0.7984 (±0.0108)
+
+🔹 SVM:
+   Accuracy:  0.8112
+   Precision: 0.6864
+   Recall:    0.5282
+   F1-Score:  0.5970
+   AUC:       0.8214
+   CV Score:  0.7966 (±0.0046)
+
+🔹 KNN:
+   Accuracy:  0.7779
+   Precision: 0.5915
+   Recall:    0.5201
+   F1-Score:  0.5535
+   AUC:       0.7941
+   CV Score:  0.7528 (±0.0057)
+
+🔹 NeuralNetwork:
+   Accuracy:  0.8226
+   Precision: 0.7030
+   Recall:    0.5710
+   F1-Score:  0.6302
+   AUC:       0.8575
+   CV Score:  0.7939 (±0.0052)
 ```
 
 ```python
@@ -559,27 +660,6 @@ multi_model.predict_all_customers(customer_3, X_train.columns, scaler)
 🔍 Kết quả của mô hình NeuralNetwork:
 - -> 🛡️ Ở lại
 - Xác suất churn: 0.0122
-### ------------------------------🚀🚀🚀-----------------------------
-
-🔍 Kết quả của mô hình LogisticRegression:
-- -> 🚶‍➡️ Rời đi
-- Xác suất churn: 0.6011
-
-🔍 Kết quả của mô hình RandomForest:
-- -> 🚶‍➡️ Rời đi
-- Xác suất churn: 0.7022
-
-🔍 Kết quả của mô hình SVM:
-- -> 🚶‍➡️ Rời đi
-- Xác suất churn: 0.7868
-
-🔍 Kết quả của mô hình KNN:
-- -> 🚶‍➡️ Rời đi
-- Xác suất churn: 1.0000
-
-🔍 Kết quả của mô hình NeuralNetwork:
-- -> 🛡️ Ở lại
-- Xác suất churn: 0.0108
 
 ### 5.2.1 Linear Regression Analysis (Lecture 3)
 ```python
@@ -1059,35 +1139,43 @@ print("✅ Kết quả đã được lưu và tải xuống!")
 
 ## 🎉 Hoàn thành!
 
-### 📊 Summary
+### �� Summary
 ```python
+# Tóm tắt cải tiến - chọn mô hình theo business metrics
+def select_best_model_for_churn(results_dict):
+    """
+    Chọn mô hình tốt nhất cho bài toán churn prediction
+    Ưu tiên: Recall > AUC > F1-Score > Accuracy
+    """
+    scores = {}
+    for model, metrics in results_dict.items():
+        # Weighted business score for churn prediction
+        business_score = (
+            metrics['recall'] * 0.35 +      # Quan trọng nhất: phát hiện churn
+            metrics['auc'] * 0.25 +         # Khả năng phân biệt
+            metrics['f1_score'] * 0.25 +    # Cân bằng precision/recall  
+            metrics['accuracy'] * 0.15      # Độ chính xác tổng thể
+        )
+        scores[model] = business_score
+    
+    best_model = max(scores, key=scores.get)
+    return best_model, scores
+
+# Sử dụng function
+best_model, business_scores = select_best_model_for_churn(results)
+
 print("🎯 TÓM TẮT DỰ ÁN")
 print("=" * 50)
 print(f"📊 Dữ liệu: {df.shape[0]} khách hàng, {df.shape[1]} đặc trưng")
 print(f"🎯 Mục tiêu: Customer Churn ({(y.sum() / len(y) * 100):.1f}% tỷ lệ churn)")
 print(f"🔧 Đặc trưng sau tiền xử lý: {X.shape[1]}")
-print(f"🏆 Mô hình tốt nhất: {results_df['accuracy'].idxmax()} ({results_df['accuracy'].max():.3f})")
-print(f"🎯 Bộ đặc trưng tốt nhất: {subset_df.index[0]} ({subset_df.iloc[0]['accuracy']:.3f})")
+print(f"🏆 Mô hình tốt nhất (Accuracy): {results_df['accuracy'].idxmax()} ({results_df['accuracy'].max():.3f})")
+print(f"🎯 Mô hình tốt nhất (Business): {best_model} (Score: {business_scores[best_model]:.3f})")
+print(f"📊 Bộ đặc trưng tốt nhất: {subset_df.index[0]} ({subset_df.iloc[0]['accuracy']:.3f})")
+
+print(f"\n📈 BUSINESS SCORES CHO TẤT CẢ MÔ HÌNH:")
+for model, score in sorted(business_scores.items(), key=lambda x: x[1], reverse=True):
+    print(f"   {model}: {score:.3f}")
+
 print("\n✅ Phân tích hoàn thành thành công!")
 ```
-
-## 🚀 Tips cho Google Colab
-
-### Tối ưu Performance:
-- Sử dụng GPU: **Runtime > Change runtime type > GPU**
-- Disconnect sau khi xong: **Runtime > Disconnect**
-- Restart nếu memory đầy: **Runtime > Restart runtime**
-
-### Lưu trữ:
-- Mount Google Drive để lưu permanent
-- Download results quan trọng về máy
-- Copy notebook vào Drive để backup
-
-### Troubleshooting:
-- Nếu bị disconnect: Re-run từ đầu
-- Nếu thiếu package: `!pip install package_name`
-- Nếu lỗi memory: Giảm data size hoặc dùng sampling
-
----
-
-**🎉 Chúc bạn thành công với project Machine Learning!** 
